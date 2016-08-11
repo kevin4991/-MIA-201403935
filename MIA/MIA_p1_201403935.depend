@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1470942316 source:/home/kevin/-MIA-201403935/MIA/main.c
+	<stdio.h>
+	<stdlib.h>
+	<stdbool.h>
+	<string.h>
+	<ctype.h>
+	<time.h>
+
