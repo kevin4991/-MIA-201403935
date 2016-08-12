@@ -140,8 +140,7 @@ int tamano_asignacion(int unidades, int tamano){
     return tamano_disco;
 }
 
-void MKDISK_C (int tamano, char unidades, char *path, char *nombre)
-{
+void MKDISK_C (int tamano, char unidades, char *path, char *nombre){
 
     char auxiliar [300];
     char path_completo [300];
@@ -242,8 +241,7 @@ void MKDISK_C (int tamano, char unidades, char *path, char *nombre)
     fclose(disco);
 }
 
-void RMDISK_C (char *path)
-{
+void RMDISK_C (char *path){
     char auxiliar [300];
     char path_completo [300];
     strcpy(path_completo,"'");
@@ -257,6 +255,19 @@ void RMDISK_C (char *path)
     system(auxiliar);
 }
 
+void FDISK_C(int tamano, char unidades, char *path, char *tipo, char *fit, char *del_t, char *name, char *add){
+
+}
+
+void MOUNT_C(char *path, char* name)
+{
+
+}
+
+void MOUNT_C(char *id_n)
+{
+
+}
 //////////////////////////////////
 //////  METODOS DE REPORTE  //////
 //////////////////////////////////
