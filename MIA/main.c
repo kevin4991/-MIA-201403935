@@ -5,9 +5,23 @@
 #include <ctype.h>
 #include <time.h>
 
+#define TRUE 1
+#define FALSE 0
+
 //////////////////////////////////
 ////// LISTA DE COMANDOS /////////
 //////////////////////////////////
+
+struct PARTITION{
+    char part_status;
+    char part_type;
+    char part_fit;
+    int part_start;
+    int part_size;
+    char part_name[16];
+};
+typedef struct PARTITION Particion;
+
 
 struct token
 {
@@ -67,23 +81,58 @@ void insertar(Lista_comando **value, char valor [200], char tipo [200], int colu
         (*value)->ultimo->siguiente = nuevo;
         (*value)->ultimo = nuevo;
     }
+}
 
+//// LISTA MOUNT
+
+struct nodo_mount
+{
+    Particion contenido;
+    struct nodo_mount *siguiente;
+};
+
+typedef struct nodo_mount NODO_MOUNT;
+
+struct lista_mount
+{
+    NODO_MOUNT *primero;
+    NODO_MOUNT *ultimo;
+};
+
+typedef struct lista_mount Lista_MOUNT;
+
+void iniciar_lista_mount(Lista_MOUNT **lista)
+{
+    (*lista) = (Lista_MOUNT*) malloc(sizeof(Lista_MOUNT));
+    (*lista)->primero = (NODO_MOUNT*) NULL;
+    (*lista)->ultimo = (NODO_MOUNT*) NULL;
+}
+
+
+void insertar_mount(Lista_MOUNT **value, Particion val)
+{
+    NODO_MOUNT *nuevo = (NODO_MOUNT*) malloc(sizeof(NODO_MOUNT));
+    nuevo->contenido = val;
+    nuevo->siguiente = NULL;
+
+    if((*value)->primero==NULL)
+    {
+        (*value)->primero = nuevo;
+        (*value)->ultimo = nuevo;
+    }
+    else
+    {
+        (*value)->ultimo->siguiente = nuevo;
+        (*value)->ultimo = nuevo;
+    }
 
 }
+
 
 //////////////////////////////////
 ////////  ESTRUCTURAS  ///////////
 //////////////////////////////////
 
-struct PARTITION{
-    char part_status;
-    char part_type;
-    char part_fit;
-    int part_start;
-    int part_size;
-    char part_name[16];
-};
-typedef struct PARTITION Particion;
 
 struct MASTER_BOOT_RECORD
 {
@@ -228,7 +277,7 @@ void MKDISK_C (int tamano, char unidades, char *path, char *nombre){
         strcpy(mbr_de_particion.mbr_partition[inde].part_name,"");
         mbr_de_particion.mbr_partition[inde].part_size = 0;
         mbr_de_particion.mbr_partition[inde].part_start = 0;
-        mbr_de_particion.mbr_partition[inde].part_status = '\0';
+        mbr_de_particion.mbr_partition[inde].part_status = 'N';
         mbr_de_particion.mbr_partition[inde].part_type = '\0';
     }
 
@@ -255,16 +304,116 @@ void RMDISK_C (char *path){
     system(auxiliar);
 }
 
-void FDISK_C(int tamano, char unidades, char *path, char *tipo, char *fit, char *del_t, char *name, char *add){
+void FDISK_C(int tamano, char unidades, char *path, char tipo, char *fit, char *del_t, char *name, int add){
 
-}
+    char path_completo [500];
+    strcpy(&path_completo,"");
+    strcat(&path_completo,path);
+    strcat(&path_completo,"/");
+    strcat(&path_completo,name);
+    //strcat(&path_completo,"'");
+
+    //VERIFICACION DE DIRECTORIO Y ARCHIVO
+
+    FILE *disco_consulta;
+    disco_consulta = fopen(path_completo,"rb");
+    printf("\nMi path: %s\n",path_completo);
+    int boolean_caso = FALSE;
+    MBR mbr_particion;
+
+    if(disco_consulta == NULL)
+    {
+        boolean_caso = FALSE;
+        //printf("\n NO EXISTE");
+    }
+    else{
+        boolean_caso = TRUE;
+        fread(&mbr_particion,sizeof(MBR),1,disco_consulta);
+        //printf("\n EXISTE");
+    }
+
+    int espacio_mbr = (int) sizeof(MBR);
+    int espacio_particiones = 0;
+    int espacion_nueva_particion = tamano_asignacion(tolower(unidades),tamano) * tamano;
+    int tamano_disco = mbr_particion.mbr_tamano;
+    int tamano_real = 0;
+    int particiones_disponibles = 0;
+    int particiones_extendidas = 0;
+    int particiones_primarias = 0;
+    int particiones_sintipo = 0;
+    int primer_ajuste_particion = 0;
+
+    if(boolean_caso == TRUE)
+    {
+        //VERIFICAMOS EL ESPACIO EN PARTICION
+        for(int i = 0; i < 4; i++)
+        {
+            espacio_particiones += mbr_particion.mbr_partition[i].part_size;
+            char status = mbr_particion.mbr_partition[i].part_status;
+            char itipo = mbr_particion.mbr_partition[i].part_type;
+
+            if(tolower(status) == tolower('N'))
+            {
+                particiones_disponibles++;
+                if(primer_ajuste_particion == 0)
+                {
+                    primer_ajuste_particion == i;
+                }
+            }
+
+            if(tolower(itipo) == tolower('p'))
+            {
+                particiones_primarias++;
+            }
+            else if(tolower(itipo) == tolower('e'))
+            {
+                particiones_extendidas++;
+            }
+            else if(tolower(itipo) == tolower('\0'))
+            {
+                particiones_sintipo++;
+            }
+            //printf("\n%c\n",status);
+        }
+
+        tamano_real = tamano_disco - espacio_particiones - espacio_mbr;
+
+        printf("\nEspacio MBR: %i",espacio_mbr);
+        printf("\nEspacio Particiones: %i",espacio_particiones);
+        printf("\nEspacio Tamano Disco: %i",tamano_disco);
+        printf("\nEspacio Real: %i",tamano_real);
+        printf("\nEspacio Nueva Particion: %i",espacion_nueva_particion);
+        printf("\nParticiones Disponibles: %i",particiones_disponibles);
+        printf("\nParticiones Primarias: %i",particiones_primarias);
+        printf("\nParticiones Extendidas: %i",particiones_primarias);
+        printf("\nParticiones Sin tipo: %i\n",particiones_sintipo);
+        int ACCESO_PARTICION;
+
+        if(tamano_real > espacion_nueva_particion)
+        {
+            ACCESO_PARTICION = TRUE;
+            //printf("\n\nSE PUEDE PARTICIONAR! \n");
+        }
+        else
+        {
+            ACCESO_PARTICION = FALSE;
+            //printf("\nNO SE PUEDE PARTICIONAR! \n");
+        }
+
+
+
+    }
+
+
+
+ }
 
 void MOUNT_C(char *path, char* name)
 {
 
 }
 
-void MOUNT_C(char *id_n)
+void UNMOUNT(char *id_n)
 {
 
 }
@@ -287,10 +436,14 @@ void listar_mbr(char *path)
     tm=localtime(&t);
     strftime(fechayhora, 100, "%d/%m/%Y", tm);
 
+    printf("MBR DE DISCO: \n");
     printf("\nParticion: %d Bytes\n",mbr_particion.mbr_tamano);
     printf("Fecha de creacion: %s\n", fechayhora);
     printf("Identificador del disco: %i\n",mbr_particion.mbr_disk_signature);
-
+    printf("\nParticion 1: %c",mbr_particion.mbr_partition[0].part_name);
+    printf("\nParticion 2: %c",mbr_particion.mbr_partition[1].part_name);
+    printf("\nParticion 3: %c",mbr_particion.mbr_partition[2].part_name);
+    printf("\nParticion 4: %c",mbr_particion.mbr_partition[3].part_name);
 }
 
 
@@ -306,5 +459,6 @@ int main()
     MKDISK_C(200,'b',"/home/kevin/chatos/como_son","chatos.dsk");
     listar_mbr("/home/kevin/chatos/como_son/chatos.dsk");
     //RMDISK_C("/home/kevin/chatos/como_son/chatos.dsk");
+    FDISK_C(100,'b',"/home/kevin/chatos/como_son",'P',"BF","Fast","chatos.dsk",1);
     return 0;
 }
